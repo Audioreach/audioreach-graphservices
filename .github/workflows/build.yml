@@ -10,6 +10,12 @@ on:
         type: string
         description: Required build arguments
 
+      build_script:
+        required: true
+        type: string
+        default: 'ci/build.sh'
+        description: Optional build script to run inside the docker container
+
 # Use qcs6490 sdk for compiling, as sdk is similar for all the targets
 env:
   SDK_NAME: poky-glibc-x86_64-core-image-base-armv8-2a-qcs6490-rb3gen2-core-kit-toolchain-5.2.sh
@@ -23,7 +29,16 @@ jobs:
     strategy:
       fail-fast: false
     steps:
+      - name: Checkout Repository pre_merge
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
       - name: Checkout Repository
+        if: github.event_name != 'pull_request_target'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -69,6 +84,7 @@ jobs:
           docker_image: ${{ steps.get-docker-image.outputs.image_name }}
         env:
           BUILD_ARGS: ${{ inputs.build_args }}
+          BUILD_SCRIPT: ${{ inputs.build_script }}
           KERNEL_VERSION: ${{ steps.extract_kernel_version.outputs.KERNEL_VERSION }}
 
       - name: Clean Up Workspace
