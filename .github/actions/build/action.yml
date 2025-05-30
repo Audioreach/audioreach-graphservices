@@ -10,22 +10,6 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Clone meta-ar
-      shell: bash
-      run: |
-        # Clone the meta-ar repository
-        cd ${{ github.workspace }}/..
-        # Check if the directory already exists
-        if [ -d "meta-ar" ]; then
-          echo "Directory meta-ar already exists. Pulling latest changes."
-          cd meta-ar
-          git reset --hard origin/main
-          git pull origin main
-        else
-          echo "Directory meta-ar does not exist. Cloning repository."
-          git clone https://github.com/Audioreach/meta-ar.git
-        fi
-
     - name: Build Project
       id: build
       shell: bash
@@ -33,14 +17,11 @@ runs:
         # Load the build arguments
         set +x
 
-        # Apply patch
-        git apply ../meta-ar/recipes/audio/audioreach-graphservices/0001-ar_osal-update-msm_audio.h-header-include-path.patch
-
         # Build inside a docker container
         docker run \
           --rm \
           --user $(id -u):$(id -g) \
-          -v $PWD:$PWD \
+          -v $PWD/..:$PWD/.. \
           -w $PWD \
           -e "GITHUB_WORKSPACE=${{ github.workspace }}" \
           -e "BUILD_ARGS=${{ env.BUILD_ARGS }}" \
@@ -49,14 +30,12 @@ runs:
           ${{ inputs.docker_image }} \
           bash -c "
             set +x
-            source ./install/environment-setup-armv8-2a-poky-linux
-            autoreconf -Wcross --verbose --install --force --exclude=autopoint
-            autoconf --force
-
-            # Run the configure script with the specified arguments
-            ./configure CFLAGS=\"-Wno-int-conversion\" \${BUILD_ARGS} --with-sanitized-headers=\${GITHUB_WORKSPACE}/install/sysroots/armv8-2a-poky-linux/usr/lib/modules/\$KERNEL_VERSION/build/include/uapi/sound/qcom
-            # make
-            make DESTDIR=\${GITHUB_WORKSPACE}/build install
+            export GITHUB_WORKSPACE="${GITHUB_WORKSPACE}"
+            export BUILD_ARGS="${BUILD_ARGS}"
+            export KERNEL_VERSION="${KERNEL_VERSION}"
+            echo "::group::$(printf '__________ %-100s' 'setup bitbake' | tr ' ' _)"
+            source ./ci/build.sh
+            echo "::endgroup::"
             "
 
     - name: Create build.tar
