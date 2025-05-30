@@ -5,10 +5,29 @@ description: Process Image for build url
 on:
   workflow_call:
     inputs:
-      docker_image:
-        description: Docker Image used for test
-        required: true
+      event_name:
+        required: false
         type: string
+        description: Optional event name to use for building
+        default: ${{ github.event_name }}
+
+      pr_ref:
+        required: false
+        type: string
+        description: Optional pull request reference to use for building
+        default: ${{ github.event.pull_request.head.ref }}
+
+      pr_repo:
+        required: false
+        type: string
+        description: Optional pull request repository to use for building
+        default: ${{ github.event.pull_request.head.repo.full_name }}
+
+      base_ref:
+        required: false
+        type: string
+        description: Optional base reference to use for building
+        default: ${{ github.ref_name }}
 
 # Using qcs6490 flat_build
 env:
@@ -20,15 +39,18 @@ jobs:
       group: GHA-Audioreach-SelfHosted-RG
       labels: [ self-hosted, audior-prd-u2204-x64-large-od-ephem ]
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.ref }}
-
       - name: Build docker Image
         id: get-docker-image
-        uses: ./.github/actions/build_docker_image
+        uses: Audioreach/args-test/.github/actions/build_docker_image@master
+
+      - name: Sync Codebase
+        id: sync
+        uses: Audioreach/args-test/.github/actions/sync@master
+        with:
+          event_name: ${{ inputs.event_name }}
+          pr_ref: ${{ inputs.pr_ref }}
+          pr_repo: ${{ inputs.pr_repo }}
+          base_ref: ${{ inputs.base_ref }}
 
       - name: Download build artifact
         id: download_build_artifact
@@ -51,12 +73,12 @@ jobs:
 
       - name: Pull meta-ar pre compiled image
         id: pull_meta_ar
-        uses: ./.github/actions/aws-s3-exchanger
+        uses: Audioreach/args-test/.github/actions/aws-s3-exchanger@master
         with:
           s3_bucket: qli-prd-audior-gh-artifacts
           mode: download
           download_filename: ${{ env.IMAGE_NAME }}.tar.gz
-          location: Audioreach/meta-ar
+          location: Audioreach/meta-ar/post_merge_build
 
       - name: Extract image and mount
         id: extract_image
@@ -79,7 +101,7 @@ jobs:
             -w /workspace \
             -e "IMAGE_NAME=${{ env.IMAGE_NAME }}" \
             --privileged \
-            ${{ inputs.docker_image }} \
+            ${{ steps.get-docker-image.outputs.image_name }} \
             bash -c "
               set -xe
               cd ${IMAGE_NAME}
@@ -111,7 +133,7 @@ jobs:
 
       - name: Upload tar image
         id: upload_tar_image
-        uses: ./.github/actions/aws-s3-exchanger
+        uses: Audioreach/args-test/.github/actions/aws-s3-exchanger@master
         with:
           s3_bucket: qli-prd-audior-gh-artifacts
           local_file: ${{ github.workspace }}/${{ env.IMAGE_NAME }}.tar.gz

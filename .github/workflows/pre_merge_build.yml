@@ -13,23 +13,21 @@ on:
 
 jobs:
   load_parameters:
-    uses: ./.github/workflows/loading.yml
+    uses: Audioreach/args-test/.github/workflows/loading.yml@master
 
   build:
     needs: load_parameters
-    uses: ./.github/workflows/build.yml
+    uses: Audioreach/args-test/.github/workflows/build.yml@master
     secrets: inherit
     with:
       build_args: ${{ needs.load_parameters.outputs.build_args }}
 
   process_image:
     needs: [ load_parameters, build ]
-    uses: ./.github/workflows/process_image.yml
+    uses: Audioreach/args-test/.github/workflows/process_image.yml@master
     secrets: inherit
-    with:
-      docker_image: ar-image:latest
 
   trigger_lava:
     needs: [ load_parameters, build, process_image ]
-    uses: ./.github/workflows/test.yml
+    uses: Audioreach/args-test/.github/workflows/test.yml@master
     secrets: inherit

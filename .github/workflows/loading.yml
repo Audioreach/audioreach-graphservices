@@ -4,6 +4,13 @@ description: Load required parameters for the subsequent jobs
 
 on:
   workflow_call:
+    inputs:
+      build_options_file:
+        description: The file containing build options
+        required: false
+        type: string
+        default: 'ci/build_options.txt'
+
     outputs:
       build_args:
         description: The build arguments
@@ -23,4 +30,6 @@ jobs:
 
       - name: Load Parameters
         id: loading
-        uses: ./.github/actions/loading
+        uses: Audioreach/args-test/.github/actions/loading@master
+        with:
+          build_options_file: ${{ inputs.build_options_file }}

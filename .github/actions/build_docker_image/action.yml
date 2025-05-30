@@ -52,10 +52,3 @@ runs:
       run: |
         echo "Docker image ar-image:latest built successfully."
         echo "image_name=ar-image:latest" >> "$GITHUB_OUTPUT"
-
-    # Checkout the main repo again for later steps
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        ref: ${{ github.ref }}
