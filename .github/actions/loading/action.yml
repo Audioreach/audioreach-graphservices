@@ -2,6 +2,13 @@
 name: Load Parameters
 description: Load parameters for the workflow
 
+inputs:
+  build_options_file:
+    description: The file containing build options
+    required: true
+    type: string
+    default: 'ci/build_options.txt'
+
 outputs:
   build_args:
     description: The build arguments
@@ -16,6 +23,6 @@ runs:
       with:
         script: |
           const fs = require('fs')
-          const options = fs.readFileSync('./ci/build_options.txt').toString().trim().split('\n').join(' ')
+          const options = fs.readFileSync('${{ github.workspace }}/${{ inputs.build_options_file }}').toString().trim().split('\n').join(' ')
           console.log(options)
           core.setOutput('build_args', options)

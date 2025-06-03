@@ -10,6 +10,34 @@ on:
         type: string
         description: Required build arguments
 
+      build_script:
+        required: false
+        type: string
+        default: 'ci/build.sh'
+        description: Optional build script to run inside the docker container
+        # This script is used to build the project inside the docker container
+
+      sync_script:
+        required: false
+        type: string
+        default: 'ci/sync.sh'
+        description: Optional sync script to run inside the docker container
+        # This script is used to sync the repository with the latest changes before building
+
+      apply_patch_script:
+        required: false
+        type: string
+        default: 'ci/apply_patch.sh'
+        description: Optional script to apply patches before building
+        # This script is used to apply any patches to the repository before building
+      
+      config_script:
+        required: false
+        type: string
+        default: 'ci/config.sh'
+        description: Optional script to configure the build environment
+        # This script contains the repositories and patches information for the build
+
 # Use qcs6490 sdk for compiling, as sdk is similar for all the targets
 env:
   SDK_NAME: poky-glibc-x86_64-core-image-base-armv8-2a-qcs6490-rb3gen2-core-kit-toolchain-5.2.sh
@@ -23,7 +51,16 @@ jobs:
     strategy:
       fail-fast: false
     steps:
+      - name: Checkout Repository pre_merge
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
       - name: Checkout Repository
+        if: github.event_name != 'pull_request_target'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -31,11 +68,11 @@ jobs:
 
       - name: Build docker Image
         id: get-docker-image
-        uses: ./.github/actions/build_docker_image
+        uses: Audioreach/audioreach-graphservices/.github/actions/build_docker_image@master
 
       - name: Pull SDK sh file
         id: pull_sdk
-        uses: ./.github/actions/aws-s3-exchanger
+        uses: Audioreach/audioreach-graphservices/.github/actions/aws-s3-exchanger@master
         with:
           s3_bucket: qli-prd-audior-gh-artifacts
           download_filename: ${{ env.SDK_NAME }}
@@ -64,11 +101,15 @@ jobs:
 
       - name: Build
         id: build
-        uses: ./.github/actions/build
+        uses: Audioreach/audioreach-graphservices/.github/actions/build@master
         with:
           docker_image: ${{ steps.get-docker-image.outputs.image_name }}
         env:
           BUILD_ARGS: ${{ inputs.build_args }}
+          BUILD_SCRIPT: ${{ inputs.build_script }}
+          SYNC_SCRIPT: ${{ inputs.sync_script }}
+          APPLY_PATCH_SCRIPT: ${{ inputs.apply_patch_script }}
+          CONFIG_SCRIPT: ${{ inputs.config_script }}
           KERNEL_VERSION: ${{ steps.extract_kernel_version.outputs.KERNEL_VERSION }}
 
       - name: Clean Up Workspace

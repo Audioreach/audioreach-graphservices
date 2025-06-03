@@ -4,11 +4,6 @@ description: Process Image for build url
 
 on:
   workflow_call:
-    inputs:
-      docker_image:
-        description: Docker Image used for test
-        required: true
-        type: string
 
 # Using qcs6490 flat_build
 env:
@@ -20,7 +15,16 @@ jobs:
       group: GHA-Audioreach-SelfHosted-RG
       labels: [ self-hosted, audior-prd-u2204-x64-large-od-ephem ]
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository pre_merge
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Checkout Repository
+        if: github.event_name != 'pull_request_target'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -28,7 +32,7 @@ jobs:
 
       - name: Build docker Image
         id: get-docker-image
-        uses: ./.github/actions/build_docker_image
+        uses: Audioreach/audioreach-graphservices/.github/actions/build_docker_image@master
 
       - name: Download build artifact
         id: download_build_artifact
@@ -51,12 +55,12 @@ jobs:
 
       - name: Pull meta-ar pre compiled image
         id: pull_meta_ar
-        uses: ./.github/actions/aws-s3-exchanger
+        uses: Audioreach/audioreach-graphservices/.github/actions/aws-s3-exchanger@master
         with:
           s3_bucket: qli-prd-audior-gh-artifacts
           mode: download
           download_filename: ${{ env.IMAGE_NAME }}.tar.gz
-          location: Audioreach/meta-ar
+          location: Audioreach/meta-ar/post_merge_build
 
       - name: Extract image and mount
         id: extract_image
@@ -79,7 +83,7 @@ jobs:
             -w /workspace \
             -e "IMAGE_NAME=${{ env.IMAGE_NAME }}" \
             --privileged \
-            ${{ inputs.docker_image }} \
+            ${{ steps.get-docker-image.outputs.image_name }} \
             bash -c "
               set -xe
               cd ${IMAGE_NAME}
@@ -111,7 +115,7 @@ jobs:
 
       - name: Upload tar image
         id: upload_tar_image
-        uses: ./.github/actions/aws-s3-exchanger
+        uses: Audioreach/audioreach-graphservices/.github/actions/aws-s3-exchanger@master
         with:
           s3_bucket: qli-prd-audior-gh-artifacts
           local_file: ${{ github.workspace }}/${{ env.IMAGE_NAME }}.tar.gz
