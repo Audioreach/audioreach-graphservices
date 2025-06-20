@@ -13,21 +13,37 @@ on:
 
 jobs:
   load_parameters:
-    uses: Audioreach/args-test/.github/workflows/loading.yml@master
+    uses: Audioreach/audioreach-workflows/.github/workflows/loading.yml@master
+    with:
+      build_options_file: ci/build_options.txt
+      event_name: ${{ github.event_name }}
+      pr_ref: ${{ github.event.pull_request.head.ref }}
+      pr_repo: ${{ github.event.pull_request.head.repo.full_name }}
 
   build:
     needs: load_parameters
-    uses: Audioreach/args-test/.github/workflows/build.yml@master
+    uses: Audioreach/audioreach-workflows/.github/workflows/build.yml@master
     secrets: inherit
     with:
       build_args: ${{ needs.load_parameters.outputs.build_args }}
+      build_script: ci/build.sh
+      sync_script: ci/sync.sh
+      apply_patch_script: ci/apply_patch.sh
+      config_script: ci/config.sh
+      event_name: ${{ github.event_name }}
+      pr_ref: ${{ github.event.pull_request.head.ref }}
+      pr_repo: ${{ github.event.pull_request.head.repo.full_name }}
 
   process_image:
     needs: [ load_parameters, build ]
-    uses: Audioreach/args-test/.github/workflows/process_image.yml@master
+    uses: Audioreach/audioreach-workflows/.github/workflows/process_image.yml@master
     secrets: inherit
+    with:
+      event_name: ${{ github.event_name }}
+      pr_ref: ${{ github.event.pull_request.head.ref }}
+      pr_repo: ${{ github.event.pull_request.head.repo.full_name }}
 
   trigger_lava:
     needs: [ load_parameters, build, process_image ]
-    uses: Audioreach/args-test/.github/workflows/test.yml@master
+    uses: Audioreach/audioreach-workflows/.github/workflows/test.yml@master
     secrets: inherit
