@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
 set -e
 # This script synchronizes the repositories and patches defined in config.sh.
 CONFIG_SCRIPT_PATH="${CONFIG_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/config.sh}"

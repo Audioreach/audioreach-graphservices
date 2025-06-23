@@ -1,6 +1,6 @@
 ---
 name: pre_merge_build
-run-name: Pre Merge Build ${{ github.event.pull_request.number }}
+run-name: Pre Merge Build (PR:${{ github.event.pull_request.number }})
 
 on:
   workflow_dispatch:
@@ -13,23 +13,32 @@ on:
 
 jobs:
   load_parameters:
-    uses: ./.github/workflows/loading.yml
+    uses: Audioreach/audioreach-workflows/.github/workflows/loading.yml@master
+    with:
+      event_name: ${{ github.event_name }}
+      pr_ref: ${{ github.event.pull_request.head.ref }}
+      pr_repo: ${{ github.event.pull_request.head.repo.full_name }}
 
   build:
     needs: load_parameters
-    uses: ./.github/workflows/build.yml
+    uses: Audioreach/audioreach-workflows/.github/workflows/build.yml@master
     secrets: inherit
     with:
       build_args: ${{ needs.load_parameters.outputs.build_args }}
+      event_name: ${{ github.event_name }}
+      pr_ref: ${{ github.event.pull_request.head.ref }}
+      pr_repo: ${{ github.event.pull_request.head.repo.full_name }}
 
   process_image:
     needs: [ load_parameters, build ]
-    uses: ./.github/workflows/process_image.yml
+    uses: Audioreach/audioreach-workflows/.github/workflows/process_image.yml@master
     secrets: inherit
     with:
-      docker_image: ar-image:latest
+      event_name: ${{ github.event_name }}
+      pr_ref: ${{ github.event.pull_request.head.ref }}
+      pr_repo: ${{ github.event.pull_request.head.repo.full_name }}
 
   trigger_lava:
     needs: [ load_parameters, build, process_image ]
-    uses: ./.github/workflows/test.yml
+    uses: Audioreach/audioreach-workflows/.github/workflows/test.yml@master
     secrets: inherit
